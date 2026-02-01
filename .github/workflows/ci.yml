@@ -7,6 +7,8 @@ on:
 jobs:
   build-test:
     runs-on: ubuntu-latest
+    env:
+      GOFLAGS: -mod=mod
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -16,6 +18,9 @@ jobs:
         with:
           go-version-file: go.mod
           cache: true
+
+      - name: Go mod tidy
+        run: go mod tidy
 
       - name: Go test
         run: go test ./...

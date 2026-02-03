@@ -63,9 +63,10 @@ Install latest release package:
 
 ```bash
 ARCH="$(dpkg --print-architecture)"
-VERSION="$(curl -fsSL https://api.github.com/repos/alilxxey/strongswan-exporter/releases/latest | sed -n 's/.*\"tag_name\": \"\\(v[^\"]*\\)\".*/\\1/p' | head -n1)"
-curl -fLO "https://github.com/alilxxey/strongswan-exporter/releases/download/${VERSION}/strongswan-exporter_${VERSION#v}_${ARCH}.deb"
-sudo apt install "./strongswan-exporter_${VERSION#v}_${ARCH}.deb"
+VERSION="$(curl -fsSL https://api.github.com/repos/alilxxey/strongswan-exporter/releases/latest | sed -nE 's/.*"tag_name":[[:space:]]*"([^"]+)".*/\1/p' | head -n1)"
+[ -n "${VERSION}" ] || { echo "failed to detect latest release tag"; exit 1; }
+curl -fLO "https://github.com/alilxxey/strongswan-exporter/releases/download/${VERSION}/strongswan-exporter_${VERSION#v}_linux_${ARCH}.deb"
+sudo apt install "./strongswan-exporter_${VERSION#v}_linux_${ARCH}.deb"
 ```
 
 The service is enabled and started during package install. Useful commands:

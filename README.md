@@ -47,6 +47,40 @@ go build -o strongswan-exporter ./cmd/strongswan-exporter
   -metrics-path /metrics
 ```
 
+## Debian package (.deb)
+
+CI builds Debian packages (GoReleaser + nFPM) that install:
+
+- binary: `/usr/bin/strongswan-exporter`
+- systemd unit: `/lib/systemd/system/strongswan-exporter.service`
+- defaults file: `/etc/default/strongswan-exporter`
+- architectures: `amd64`, `arm64`
+
+On tag `v*` packages are published in GitHub Releases.
+For `main`/PR, packages are available as workflow artifacts.
+
+Install latest release package:
+
+```bash
+ARCH="$(dpkg --print-architecture)"
+VERSION="$(curl -fsSL https://api.github.com/repos/alilxxey/strongswan-exporter/releases/latest | sed -n 's/.*\"tag_name\": \"\\(v[^\"]*\\)\".*/\\1/p' | head -n1)"
+curl -fLO "https://github.com/alilxxey/strongswan-exporter/releases/download/${VERSION}/strongswan-exporter_${VERSION#v}_${ARCH}.deb"
+sudo apt install "./strongswan-exporter_${VERSION#v}_${ARCH}.deb"
+```
+
+The service is enabled and started during package install. Useful commands:
+
+```bash
+sudo systemctl status strongswan-exporter
+sudo journalctl -u strongswan-exporter -f
+```
+
+To change runtime flags, edit `/etc/default/strongswan-exporter` and restart:
+
+```bash
+sudo systemctl restart strongswan-exporter
+```
+
 ## Docker
 
 Image is built in GitHub Actions and published to GHCR:
@@ -55,7 +89,7 @@ Image is built in GitHub Actions and published to GHCR:
 - on tag `v*`: `ghcr.io/alilxxey/strongswan-exporter:vX.Y.Z`
 - also publishes SHA-based tags
 
-Example pull:
+Pull the image:
 
 ```bash
 docker pull ghcr.io/alilxxey/strongswan-exporter:main

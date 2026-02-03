@@ -1,4 +1,4 @@
-module github.com/alexeytyunkin/strongswan-exporter
+module github.com/alilxxey/strongswan-exporter
 
 go 1.25
 

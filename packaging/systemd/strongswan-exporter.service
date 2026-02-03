@@ -1,0 +1,14 @@
+[Unit]
+Description=Prometheus exporter for strongSwan
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+EnvironmentFile=-/etc/default/strongswan-exporter
+ExecStart=/usr/bin/strongswan-exporter -vici-socket ${VICI_SOCKET} -listen ${LISTEN_ADDR} -metrics-path ${METRICS_PATH} -scrape-timeout ${SCRAPE_TIMEOUT} -event-buffer ${EVENT_BUFFER}
+Restart=always
+RestartSec=5s
+
+[Install]
+WantedBy=multi-user.target

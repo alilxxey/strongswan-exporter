@@ -1,0 +1,54 @@
+version: 2
+
+project_name: strongswan-exporter
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - id: strongswan-exporter
+    main: ./cmd/strongswan-exporter
+    binary: strongswan-exporter
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w
+
+archives:
+  - id: binaries
+    ids:
+      - strongswan-exporter
+    formats:
+      - binary
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+
+checksum:
+  name_template: checksums.txt
+
+nfpms:
+  - id: deb
+    ids:
+      - strongswan-exporter
+    package_name: strongswan-exporter
+    maintainer: alilxxey <alilxxey1@gmail.com>
+    description: Prometheus exporter for strongSwan via VICI
+    license: GPL-3.0
+    formats:
+      - deb
+    bindir: /usr/bin
+    contents:
+      - src: packaging/systemd/strongswan-exporter.service
+        dst: /lib/systemd/system/strongswan-exporter.service
+      - src: packaging/default/strongswan-exporter
+        dst: /etc/default/strongswan-exporter
+        type: config
+    scripts:
+      postinstall: packaging/debian/postinstall.sh
+      preremove: packaging/debian/preremove.sh
+      postremove: packaging/debian/postremove.sh

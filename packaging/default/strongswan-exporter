@@ -1,0 +1,6 @@
+# strongswan-exporter service defaults
+VICI_SOCKET=/var/run/charon.vici
+LISTEN_ADDR=:9814
+METRICS_PATH=/metrics
+SCRAPE_TIMEOUT=5s
+EVENT_BUFFER=128

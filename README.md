@@ -49,7 +49,19 @@ go build -o strongswan-exporter ./cmd/strongswan-exporter
 
 ## Docker
 
-Build the image:
+Image is built in GitHub Actions and published to GHCR:
+
+- on `main` push: `ghcr.io/alilxxey/strongswan-exporter:main`
+- on tag `v*`: `ghcr.io/alilxxey/strongswan-exporter:vX.Y.Z`
+- also publishes SHA-based tags
+
+Example pull:
+
+```bash
+docker pull ghcr.io/alilxxey/strongswan-exporter:main
+```
+
+Local build (optional):
 
 ```bash
 docker build -t strongswan-exporter .
@@ -58,10 +70,10 @@ docker build -t strongswan-exporter .
 Run (mount the VICI socket into the container):
 
 ```bash
-docker run --rm \\
-  -p 9814:9814 \\
-  -v /var/run/charon.vici:/var/run/charon.vici \\
-  strongswan-exporter \\
+docker run --rm \
+  -p 9814:9814 \
+  -v /var/run/charon.vici:/var/run/charon.vici \
+  ghcr.io/alilxxey/strongswan-exporter:main \
   -vici-socket /var/run/charon.vici
 ```
 

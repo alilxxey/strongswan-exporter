@@ -1,0 +1,82 @@
+name: Upload Grafana Dashboards
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  upload-dashboards:
+    name: Upload dashboards to Grafana
+    runs-on: ubuntu-latest
+    environment: prod
+    timeout-minutes: 10
+    env:
+      # Configure Grafana base URL via GitHub Actions variables (repo or environment).
+      GRAFANA_URL: ${{ vars.GRAFANA_URL }}
+    steps:
+      # Check out the repository so the dashboards are available in the runner.
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Validate required configuration early for clearer failures.
+      - name: Validate configuration
+        env:
+          GRAFANA_APIKEY: ${{ secrets.GRAFANA_APIKEY }}
+        run: |
+          set -euo pipefail
+          if [[ -z "${GRAFANA_URL:-}" ]]; then
+            echo "GRAFANA_URL is not set."
+            exit 1
+          fi
+          if [[ -z "${GRAFANA_APIKEY:-}" ]]; then
+            echo "GRAFANA_APIKEY is not set."
+            exit 1
+          fi
+
+      # Upload each dashboard JSON via Grafana Dashboard HTTP API.
+      - name: Upload dashboards
+        env:
+          GRAFANA_APIKEY: ${{ secrets.GRAFANA_APIKEY }}
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+
+          files=(dashboards/*.json)
+          if (( ${#files[@]} == 0 )); then
+            echo "No dashboard files found in dashboards/*.json."
+            exit 1
+          fi
+
+          base_url="${GRAFANA_URL%/}"
+          api_url="${base_url}/api/dashboards/db"
+          resp_file="$(mktemp)"
+          trap 'rm -f "${resp_file}"' EXIT
+
+          for file in "${files[@]}"; do
+            # Remove `id` if present and preserve `uid` by default using jq.
+            payload="$(jq -c --arg folderUid "litellm" \
+              '{dashboard: (del(.id)), folderUid: $folderUid, overwrite: true}' \
+              "${file}")"
+
+            echo "Uploading ${file}"
+            http_code="$(curl --retry 3 --retry-connrefused --retry-delay 2 \
+              --silent --show-error \
+              --output "${resp_file}" \
+              --write-out "%{http_code}" \
+              --request POST \
+              --header "Content-Type: application/json" \
+              --header "Authorization: Bearer ${GRAFANA_APIKEY}" \
+              --data "${payload}" \
+              "${api_url}")"
+
+            if [[ "${http_code}" -lt 200 || "${http_code}" -ge 300 ]]; then
+              echo "Upload failed for ${file} (HTTP ${http_code})."
+              echo "Response:"
+              cat "${resp_file}"
+              exit 1
+            fi
+          done

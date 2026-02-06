@@ -9,9 +9,9 @@ permissions:
   contents: read
 
 jobs:
-  upload-dashboards:
+  push_dashboard:
     name: Upload dashboards to Grafana
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, x64]
     environment: prod
     timeout-minutes: 10
     env:

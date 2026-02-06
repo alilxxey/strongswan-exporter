@@ -1,4 +1,4 @@
-  name: Upload Grafana Dashboards
+name: Upload Grafana Dashboards
 
 on:
   push:

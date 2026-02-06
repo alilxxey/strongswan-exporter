@@ -1,6 +1,6 @@
 # strongswan-exporter
 
-Prometheus exporter for strongSwan via VICI. Exposes current sessions (like `ipsec statusall`) and per-user traffic, plus connection history from `ike-updown` events.
+Prometheus exporter for strongSwan via VICI. Exposes current sessions (similar to `swanctl --list-sas`) and per-user traffic, plus connection history from `ike-updown` events.
 
 ## Features
 
@@ -12,6 +12,7 @@ Prometheus exporter for strongSwan via VICI. Exposes current sessions (like `ips
 
 - strongSwan with VICI enabled (default in modern releases)
 - Access to the `charon.vici` socket (usually `/var/run/charon.vici`)
+- `swanctl`-based setup only (charon + VICI). `strongswan-starter`/legacy `ipsec.conf` setup is not supported.
 
 ## Enable VICI (strongSwan)
 
@@ -64,7 +65,6 @@ Install latest release package:
 ```bash
 ARCH="$(dpkg --print-architecture)"
 VERSION="$(curl -fsSL https://api.github.com/repos/alilxxey/strongswan-exporter/releases/latest | sed -nE 's/.*"tag_name":[[:space:]]*"([^"]+)".*/\1/p' | head -n1)"
-[ -n "${VERSION}" ] || { echo "failed to detect latest release tag"; exit 1; }
 curl -fLO "https://github.com/alilxxey/strongswan-exporter/releases/download/${VERSION}/strongswan-exporter_${VERSION#v}_linux_${ARCH}.deb"
 sudo apt install "./strongswan-exporter_${VERSION#v}_linux_${ARCH}.deb"
 ```

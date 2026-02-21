@@ -32,6 +32,12 @@ type eventKey struct {
 	conn string
 }
 
+type connectedMetricKey struct {
+	user       string
+	conn       string
+	remoteAddr string
+}
+
 type eventState struct {
 	lastUp      time.Time
 	lastDown    time.Time
@@ -271,6 +277,7 @@ func (e *exporter) Collect(ch chan<- prometheus.Metric) {
 
 	seq := session.CallStreaming(ctx, "list-sas", "list-sa", nil)
 	now := time.Now()
+	connectedStates := make(map[connectedMetricKey]int64)
 	for msg, err := range seq {
 		if err != nil {
 			up = 0
@@ -285,14 +292,35 @@ func (e *exporter) Collect(ch chan<- prometheus.Metric) {
 			e.logger.Printf("list-sas message error: %v", msgErr)
 			break
 		}
-		e.collectListSAs(ch, now, msg)
+		e.collectListSAs(ch, now, msg, connectedStates)
+	}
+
+	for key, connectedAt := range connectedStates {
+		if connectedAt > 0 {
+			ch <- prometheus.MustNewConstMetric(
+				e.userConnectedAtDesc,
+				prometheus.GaugeValue,
+				float64(connectedAt),
+				key.user,
+				key.conn,
+				key.remoteAddr,
+			)
+		}
+		ch <- prometheus.MustNewConstMetric(
+			e.userConnectedDesc,
+			prometheus.GaugeValue,
+			1,
+			key.user,
+			key.conn,
+			key.remoteAddr,
+		)
 	}
 
 	ch <- prometheus.MustNewConstMetric(e.upDesc, prometheus.GaugeValue, up)
 	e.events.Collect(ch)
 }
 
-func (e *exporter) collectListSAs(ch chan<- prometheus.Metric, now time.Time, msg *vici.Message) {
+func (e *exporter) collectListSAs(ch chan<- prometheus.Metric, now time.Time, msg *vici.Message, connectedStates map[connectedMetricKey]int64) {
 	for _, key := range msg.Keys() {
 		value := msg.Get(key)
 		saMsg, ok := value.(*vici.Message)
@@ -390,26 +418,19 @@ func (e *exporter) collectListSAs(ch chan<- prometheus.Metric, now time.Time, ms
 		}
 
 		if hasInstalledChild {
+			connectedAt := int64(0)
 			established := msgUint(saMsg, "established")
 			if established > 0 {
-				connectedAt := now.Add(-time.Duration(established) * time.Second).Unix()
-				ch <- prometheus.MustNewConstMetric(
-					e.userConnectedAtDesc,
-					prometheus.GaugeValue,
-					float64(connectedAt),
-					user,
-					conn,
-					remoteAddr,
-				)
+				connectedAt = now.Add(-time.Duration(established) * time.Second).Unix()
 			}
-			ch <- prometheus.MustNewConstMetric(
-				e.userConnectedDesc,
-				prometheus.GaugeValue,
-				1,
-				user,
-				conn,
-				remoteAddr,
-			)
+			connectedKey := connectedMetricKey{
+				user:       user,
+				conn:       conn,
+				remoteAddr: remoteAddr,
+			}
+			if prevConnectedAt, exists := connectedStates[connectedKey]; !exists || connectedAt > prevConnectedAt {
+				connectedStates[connectedKey] = connectedAt
+			}
 		}
 	}
 }

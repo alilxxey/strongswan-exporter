@@ -494,6 +494,8 @@ func firstNonEmpty(values ...string) string {
 	return ""
 }
 
+const eventSessionMaxAge = 5 * time.Minute
+
 func startEventListener(ctx context.Context, socket string, buffer int, store *eventStore, logger *log.Logger) {
 	go func() {
 		backoff := time.Second
@@ -521,15 +523,20 @@ func startEventListener(ctx context.Context, socket string, buffer int, store *e
 				backoff = nextBackoff(backoff)
 				continue
 			}
+			logger.Printf("vici event session established, subscribed to ike-updown")
 			backoff = time.Second
+			refreshTimer := time.NewTimer(eventSessionMaxAge)
 
 			for {
 				select {
 				case <-ctx.Done():
+					refreshTimer.Stop()
 					session.Close()
 					return
 				case ev, ok := <-events:
 					if !ok {
+						logger.Printf("vici event channel closed, reconnecting")
+						refreshTimer.Stop()
 						session.Close()
 						sleepWithContext(ctx, backoff)
 						backoff = nextBackoff(backoff)
@@ -538,6 +545,10 @@ func startEventListener(ctx context.Context, socket string, buffer int, store *e
 					if ev.Name == "ike-updown" {
 						store.handleIKEUpdown(ev.Timestamp, ev.Message)
 					}
+				case <-refreshTimer.C:
+					logger.Printf("vici event session refresh (max age %v reached)", eventSessionMaxAge)
+					session.Close()
+					goto reconnect
 				}
 			}
 		reconnect:
